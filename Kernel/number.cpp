@@ -149,6 +149,10 @@ double D(Var x)
 	return mpz_get_d(T(x));
 }
 #undef T
+
+var One = Int(static_cast<mU::sint>(1));
+var NOne = Int(static_cast<mU::sint>(-1));
+var Zero = Int(static_cast<mU::sint>(0));
 }
 namespace Q {
 #define T(x) (((rat_t*)(x))->rep)

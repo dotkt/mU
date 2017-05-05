@@ -85,5 +85,18 @@ bool FreeQ(Var x, Var y)
 		return FreeQ(Head(x),y) && FreeQ(Body(x),y);
 	return true;
 }
+sint def_t::default_type = 1;
+void def_t::insert(Var x, Var y, Var z) {
+	if (!vec && !map) {
+		if (default_type == 0)
+			new_vec();
+		else
+			new_map();
+	}
+	if (vec)
+		(*vec).push_back(std::make_pair(x, std::make_pair(y, z)));
+	else
+		(*map)[x] = std::make_pair(y, z);
+}
 //////////////////////////////////////
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include "Var.h"
+#include "Number.h"
 #include "UnicodeDevice.h"
 
 #ifdef _WIN32
@@ -88,7 +88,40 @@ API bool FreeQ(Var,Var);
 // 符号定义相关
 typedef std::map<Var,var> map_t;
 typedef std::map<var,var,Before2> dict_t;
-typedef std::map<var,std::pair<var,var>,Before2> def_t;
+struct def_t {
+	DLL static sint default_type;
+	typedef std::vector<std::pair<var, std::pair<var,var> > > vec_t;
+	vec_t* vec;
+	typedef std::map<var,std::pair<var,var>,After2> map_t;
+	map_t* map;
+	def_t() : vec(0),map(0) {}
+	void new_vec() {
+		vec = new vec_t;
+	}
+	void new_map() {
+		map = new map_t;
+	} 
+	bool is_vec() const {
+		return vec != 0;
+	}
+	bool is_map() const {
+		return map != 0;
+	}
+	DLL void insert(Var x, Var y, Var z);
+	void erase(Var x) {
+		if (vec) {
+
+		} else if (map) {
+			(*map).erase(x);
+		} 
+	}
+	~def_t() {
+		if (vec)
+			delete vec;
+		else if (map)
+			delete map;
+	}
+};
 typedef std::set<Var> attr_t;
 typedef var(*CProc)(Var);
 typedef var(*COper)(Var,Var);
@@ -100,6 +133,9 @@ API std::map<Var,map_t> Properties;
 API std::map<Var,attr_t> Attributes;
 API unordered_map<Var,CProc> CProcs;
 API unordered_map<Var,COper> COpers;
+API unordered_set<Var> TraceRuleSymbols;
+API var GetDownValues(Var);
+API var GetUpValues(Var);
 
 API var Eval(Var);
 API void Set(Var,Var);
@@ -155,21 +191,14 @@ API wstring Unique();
 
 API var Optimi(Var);
 
-API var Read(wistream&,Var = 0);
+API var ParseList(wistream& = wcin);
 API var Parse(wistream& = wcin);
-inline var ParseString(const wstring &x)
-{
-    wistringstream i(x);
-    return Parse(i);
-}
-inline var ParseFile(const wstring &x)
-{
-	// TODO: 考察在各个平台下这样读入文件时系统是否都会正确的做字符编码转换
-	//       在GNU/Linux下，使用locale::global应用默认区域设置之后就OK
-	//       Windows平台待测试
-    wifstream i(to_string(x.c_str(), x.length()).c_str());
-    return Parse(i);
-}
+API var ParseFile(const wstring&);
+API var Get(const wstring&);
+API var ParseString(const wstring&);
+API var ToExpression(const wstring&);
+API var Read(wistream&,Var = 0);
+
 API var Pretty(Var);
 API void Write(wostream&,Var);
 API void Print(Var,wostream& = wcout,size_t = 0);
@@ -178,6 +207,7 @@ inline void Println(Var x, wostream &f = wcout)
 	Print(Pretty(x),f);
 	f << std::endl;
 }
+API sint Verbose;
 API void FullPrint(Var,wostream& = wcout);
 API void BoxPrint(Var,wostream& = wcout,size_t = 0);
 
@@ -186,7 +216,7 @@ API void BoxPrint(Var,wostream& = wcout,size_t = 0);
 #define Wrap(f) var WRAP(f)(Var x)
 #define Wrap2(f) var WRAP(f)(Var x, Var y)
 API var
-Global, System, Null, True, False, Nil,
+Global, System, Null, True, False, Nil, Failed,
 Constant, Flat, HoldAll, HoldAllComplete, HoldFirst,
 HoldRest, Listable, Locked, NHoldAll, NHoldFirst,
 NHoldRest, NumericFunction, OneIdentity, Orderless, Protected,
@@ -210,9 +240,14 @@ TAG(Contexts), TAG(ContextPath), TAG(Apply), TAG(Map), TAG(Unset), TAG(Full), TA
 TAG(Exit), TAG(Quit), TAG(Hold), TAG(Run), TAG(Task), TAG(Kill), TAG(Array), TAG(Table), TAG(Do), TAG(Box),
 TAG(N), TAG(IntegerPart), TAG(Floor), TAG(Ceiling), TAG(Round), TAG(Expand), TAG(Variables), TAG(Coefficient), 
 TAG(Exponent), TAG(Deg), TAG(CoefficientList), TAG(FromCoefficientList), TAG(Graphics2D), TAG(Graphics3D),
-TAG(Options), TAG(StringLength), TAG(StringInsert), TAG(StringTake), TAG(StringDrop);
+TAG(Options), TAG(StringLength), TAG(StringInsert), TAG(StringTake), TAG(StringDrop), TAG(Alternatives), TAG(Empty),
+TAG(Default), TAG(DownValues), TAG(UpValues), TAG(Protect), TAG(Unprotect), TAG(Quiet), TAG(ListQ), TAG(NumericQ),
+TAG(First), TAG(Last), TAG(Rest), TAG(Most), TAG(Prepend), TAG(Append), TAG(Dimensions), TAG(Min), TAG(Max);
+
+const var NInfinity = Ex(TAG(Times), Vec(Z::NOne, TAG(Infinity)));
 
 #define DEF_SYSTEM_SYM(x) x = Sym(_W(#x),System);
+#define DEF_SYSTEM_NAME_SYM(x, name) x = Sym(name,System);
 #define DEF_SYSTEM_TAG_SYM(x) TAG(x) = Sym(_W(#x),System);
 #define DEF_CPROC(x) CProcs[TAG(x)] = x;
 #define DEF_WRAPPED_CPROC(x) CProcs[TAG(x)] = WRAP(x);
@@ -225,6 +260,7 @@ inline var Tag(Var x)
 {
 	switch(Type(x))
 	{
+	case TYPE(nil): return Nil;
 	case TYPE(obj): return (dynamic_cast<obj_t*>(x))->tag();
 	case TYPE(int): return TAG(Integer);
 	case TYPE(rat): return TAG(Rational);

@@ -23,11 +23,11 @@ int main(int argc,char *argv[]) {
 		wcerr << _W("Kernel library not found, quit...") << std::endl;
 		return -1;
 	}
-	ParseFile(Path() + L"mU.ini");
+	Get(Path() + L"mU.ini");
 	if(argc > 1)
 	{
 		for(size_t i = 1; i < argc; ++i)
-			ParseFile(to_wstring(argv[i], strlen(argv[i])));
+			Get(to_wstring(argv[i], strlen(argv[i])));
 		return 0;
 	}
     wcin.imbue(std::locale(""));

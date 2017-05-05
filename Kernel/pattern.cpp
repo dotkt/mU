@@ -6,67 +6,64 @@ using namespace Pattern;
 namespace
 {
 	std::stack<Var> FlatHead;
+	std::stack<var> OptionalDefault;
 }
 var Pat(pos_t &x)
 {
-	switch(Type(*x))
-	{
-	case TYPE(vec):
-        {
-            pos_t p((Var)*x);
-            return new chain(new push(),new chain(p),new pop());
-        }
-	case TYPE(ex):
-		{
-			var h = Head(*x);
-			var b = Body(*x);
-			size_t n = Size(b);
-			if(h == TAG(Blank))
-			{
-				Var a = FlatHead.empty() ? 0 : FlatHead.top();
-				if(a && (n == 0 || At(b,0) == a))
-					return new blank_flat(a,x);
-				if(n)
-					return new blank_head(At(b,0));
-				return new blank();
-			}
-			else if(h == TAG(BlankSequence))
-			{
-				if(n)
-					return new blanks_head(At(b,0),x);
-				return new blanks(x);
-			}
-			if(h == TAG(Pattern))
-			{
-				var c = At(b,0);
-				var d = Body(At(b,1));
-				h = Head(At(b,1));
-				n = Size(d);
-				if(h == TAG(Blank))
-				{
-					Var a = FlatHead.empty() ? 0 : FlatHead.top();
-					if(a && (n == 0 || At(d,0) == a))
-						return new blank_flat(a,x,c);
-					if(n)
-						return new blank_head(At(d,0),c);
-					return new blank(c);
-				}
-				else if(h == TAG(BlankSequence))
-				{
-					if(n)
-						return new blanks_head(At(d,0),x,c);
-					return new blanks(x,c);
-				}
-			}
-			if(h == TAG(Condition))
-				return new condition(Pat(At(b,0)),At(b,1));
-			return new chain(new head(h),Pat(h,b),new pop());
+	if (VecQ(*x))
+    {
+		if (Size(*x) > 0) {
+			pos_t p((Var)*x);
+			return new chain(new push(),new chain(p),new pop());
 		}
+    }
+	else if (ExQ(*x))
+	{
+		var h = Head(*x);
+		var b = Body(*x);
+		size_t n = Size(b);
+		if(h == TAG(Blank))
+		{
+			Var a = FlatHead.empty() ? 0 : FlatHead.top();
+			if(a && (n == 0 || At(b,0) == a))
+				return new blank_flat(a,x);
+			if(n)
+				return new blank_head(At(b,0));
+			return new blank();
+		}
+		else if(h == TAG(BlankSequence))
+		{
+			if(n)
+				return new blanks_head(At(b,0),x);
+			return new blanks(x);
+		} else if(h == TAG(Pattern) && n == 2)
+			return new chain(Pat(At(b,1)), new name(At(b,0)));
+		else if(h == TAG(Condition) && n == 2)
+			return new chain(Pat(Eval(At(b,0))), new condition(At(b,1)));
+		else if(h == TAG(PatternTest) && n == 2)
+			return new chain(Pat(At(b,0)), new patterntest(At(b,1)));
+		else if (h == TAG(Alternatives))
+			return new alternatives(b);
+		else if (h == TAG(Optional)) {
+			var a = n == 1 ? OptionalDefault.top() : At(b,1);
+			if (a == 0)
+				a = Null;
+			if (ExQ(At(b,0), TAG(Pattern)))
+				return new chain(new alternatives(Pat(Right(At(b,0))), new empty(a)), new name(Left(At(b,0))));
+			return new alternatives(Pat(At(b,0)), new empty(a));
+		} else if (h == TAG(Empty)) {
+			var a = n == 0 ? OptionalDefault.top() : At(b,0);
+			if (a == 0)
+				a = Null;
+			return new empty(a);
+		}
+		return PatEx(h, b);
 	}
 	return new fix(x);
 }
 var Pat(Var h, pos_t &x)
 {
+	OptionalDefault.push(FactValues[TAG(Default)][Vec(h)]);
 	std::map<Var,attr_t>::const_iterator
 		iter = Attributes.find(h);
 	var r;
@@ -84,7 +81,15 @@ var Pat(Var h, pos_t &x)
 		r = new chain(x);
 	}
 	FlatHead.pop();
+	OptionalDefault.pop();
 	return r;
+}
+var PatEx(Var h, Var b) {
+	std::map<Var,attr_t>::const_iterator
+		iter = Attributes.find(h);
+	if(iter != Attributes.end() && iter->second.count(OneIdentity))
+		return new chain(new alternatives(new head(h), new oneidentity(h)),Pat(h,b),new pop());
+	return new chain(new head(h),Pat(h,b),new pop());
 }
 bool MemberQ(Var x, Var y)
 {
@@ -130,7 +135,11 @@ var ReplaceAll(Var x, Var y, Var z)
 }
 var ReplaceAll(Var x, Var y)
 {
-	return ReplaceAll(x,Pat(Left(y)),Right(y));
+	if (ExQ(y) && (Head(y) == TAG(Rule) || Head(y) == TAG(RuleDelayed)) && Size(Body(y)) == 2)
+		return ReplaceAll(x,Pat(Left(y)),Right(y));
+	return x;
 }
+
+var catch_all_pattern = Pat(Ex(TAG(Blank), Vec()));
 //////////////////////////////////////
 }

@@ -132,6 +132,7 @@ namespace mU {
 #define TYPE(x) type_##x
 enum type_t
 {
+	type_nil = -1,
 	type_obj,type_int,type_rat,type_flt,
 	type_str,type_sym,type_vec,type_ex
 };
@@ -150,13 +151,13 @@ public:
 	var_t(type_t t) : type(t), refcount(0) {}
 	virtual ~var_t() {}
 
-	friend size_t Type(Var x);
+	friend type_t Type(Var x);
 	friend void intrusive_ptr_add_ref(Var);
 	friend void intrusive_ptr_release(Var);
 };
-inline size_t Type(Var x)
+inline type_t Type(Var x)
 {
-	return x->type;
+	return x ? static_cast<type_t>(x->type) : TYPE(nil);
 }
 
 inline void intrusive_ptr_add_ref(Var pv)
@@ -492,6 +493,7 @@ inline void Push(Var x, Var y) { VEC_REP(x).push_back(y); }
 inline void Pop(Var x) { VEC_REP(x).pop_back(); }
 inline var& Top(Var x) { return VEC_REP(x).back(); }
 inline vec_t::rep_t& CVec(Var x) { return VEC_REP(x); }
+inline bool ListQ(Var x) { return Type(x) == TYPE(vec); }
 
 /*!
 * \brief

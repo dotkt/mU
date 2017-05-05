@@ -1,3 +1,10 @@
+Begin["System`"]
+
+$SolutionFormula
+
+Begin["`Private`"]
+
+$SolutionFormula = 
 {
 a,
 b,
@@ -91,3 +98,9 @@ e,
 a-b,
 a (-1)^b
 }
+
+End[]
+
+Install@StringJoin[$Package,"Polynomial.dll"];
+
+End[]

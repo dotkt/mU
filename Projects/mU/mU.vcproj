@@ -213,6 +213,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\Kernel\flatten.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\Kernel\gen.cpp"
 				>
 			</File>
@@ -234,6 +238,10 @@
 			</File>
 			<File
 				RelativePath="..\..\Kernel\package.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\Kernel\parselist.cpp"
 				>
 			</File>
 			<File
@@ -269,6 +277,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\Kernel\set.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\Kernel\string.cpp"
 				>
 			</File>
@@ -286,6 +298,10 @@
 		<Filter
 			Name="Í·ÎÄ¼þ"
 			>
+			<File
+				RelativePath="..\..\Include\mU\Exceptions.h"
+				>
+			</File>
 			<File
 				RelativePath="..\..\Include\mU\Kernel.h"
 				>

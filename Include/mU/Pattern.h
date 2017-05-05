@@ -33,9 +33,10 @@ struct pat_t : obj_t
 };
 inline pat_t *PAT(Var x) { return dynamic_cast<pat_t*>(x); }
 API var Pat(pos_t&);
-API var Pat(Var,pos_t&);
 inline var Pat(Var x) { pos_t p((var&)x); return Pat(p); }
+API var Pat(Var,pos_t&);
 inline var Pat(Var x, Var y) { pos_t p(y); return Pat(x,p); }
+API var PatEx(Var, Var);
 inline bool MatchQ(map_t &m, Var x, Var y)
 {
 	pos_t p((var&)y);
@@ -69,61 +70,57 @@ public:
 	}
 };
 
-class blank : public pat_t
+class name : public pat_t
 {
 	var m_name;
 public:
-	blank(Var x = 0)
-	{
-		m_name = x ? x : this;
-	}
+	name(Var $name) : m_name($name) {}
 	bool match(map_t &m, pos_t &x)
 	{
-		if(!x) return false;
 		var &r = m[m_name];
 		if(r)
 		{
-			if(!Equal(r,*x))
+			if(!Equal(r, m[0]))
 				return false;
+			return next(m,x);
 		}
 		else
-			r = *x;
+			r = m[0];
+		if(next(m,x)) return true;
+		r = 0;
+		return false;
+	}
+};
+
+class blank : public pat_t
+{
+public:
+	blank() {}
+	bool match(map_t &m, pos_t &x)
+	{
+		if(!x) return false;
+		m[0] = *x;
 		++x;
 		if(next(m,x)) return true;
 		--x;
-		r = 0;
 		return false;
 	}
 };
 
 class blank_head : public pat_t
 {
-	var m_name;
 	var m_head;
 public:
-	blank_head(Var x, Var y = 0) : m_head(x)
-	{
-		m_name = y ? y : this;
-	}
+	blank_head(Var x) : m_head(x) {}
 	bool match(map_t &m, pos_t &x)
 	{
 		if(!x) return false;
-		var &r = m[m_name];
-		if(r)
-		{
-			if(!Equal(r,*x))
-				return false;
-		}
-		else
-		{
-			if(!Equal(m_head,Tag(*x)))
-				return false;
-			r = *x;
-		}
+		if(!Equal(m_head,Tag(*x)))
+			return false;
+		m[0] = *x;
 		++x;
 		if(next(m,x)) return true;
 		--x;
-		r = 0;
 		return false;
 	}
 };
@@ -132,36 +129,26 @@ class blank_flat : public pat_t
 {
 	var m_head;
 	size_t m_size;
-	var m_name;
 public:
-	blank_flat(Var x, pos_t &y, Var z = 0) : m_head(x)
+	blank_flat(Var x, pos_t &y) : m_head(x)
 	{
 		m_size = y.end - y.index - 1;
-		m_name = z ? z : this;
 	}
 	bool match(map_t &m, pos_t &x)
 	{
 		if(!x) return false;
 		var t = Ex(m_head,Vec());
-		var &r = m[m_name];
-		var s = r;
+		var& r = m[0];
 		var *a = x.index;
 		size_t n = x.end - a - m_size;
 		for(size_t i = 0; i < n; ++i)
 		{
 			Push(Body(t),a[i]);
-			if(s)
-			{
-				if(!Equal(s,i ? t : a[0]))
-					continue;
-			}
-			else
-				r = i ? t : a[0];
+			r = i ? t : a[0];
 			x.index = a + i + 1;
 			if(next(m,x)) return true;
 		}
 		x.index = a;
-		r = s;
 		return false;
 	}
 };
@@ -169,36 +156,26 @@ public:
 class blanks : public pat_t
 {
 	size_t m_size;
-	var m_name;
 public:
-	blanks(pos_t &y, Var z = 0)
+	blanks(pos_t &y)
 	{
 		m_size = y.end - y.index - 1;
-		m_name = z ? z : this;
 	}
 	bool match(map_t &m, pos_t &x)
 	{
 		if(!x) return false;
 		var t = Ex(TAG(Sequence),Vec());
-		var &r = m[m_name];
-		var s = r;
+		var& r = m[0];
 		var *a = x.index;
-		size_t n = x.end - a - m_size;
-		for(size_t i = 0; i < n; ++i)
+		int n = x.end - a - m_size;
+		for(int i = 0; i < n; ++i)
 		{
 			Push(Body(t),a[i]);
-			if(s)
-			{
-				if(!Equal(s,i ? t : a[0]))
-					continue;
-			}
-			else
-				r = i ? t : a[0];
+			r = i ? t : a[0];
 			x.index = a + i + 1;
 			if(next(m,x)) return true;
 		}
 		x.index = a;
-		r = s;
 		return false;
 	}
 };
@@ -207,19 +184,16 @@ class blanks_head : public pat_t
 {
 	var m_head;
 	size_t m_size;
-	var m_name;
 public:
-	blanks_head(Var x, pos_t &y, Var z = 0) : m_head(x)
+	blanks_head(Var x, pos_t &y) : m_head(x)
 	{
 		m_size = y.end - y.index - 1;
-		m_name = z ? z : this;
 	}
 	bool match(map_t &m, pos_t &x)
 	{
 		if(!x) return false;
 		var t = Ex(TAG(Sequence),Vec());
-		var &r = m[m_name];
-		var s = r;
+		var &r = m[0];
 		var *a = x.index;
 		size_t n = x.end - a - m_size;
 		for(size_t i = 0; i < n; ++i)
@@ -227,50 +201,41 @@ public:
 			if(!Equal(m_head,Tag(a[i])))
 				return false;
 			Push(Body(t),a[i]);
-			if(s)
-			{
-				if(!Equal(s,i ? t : a[0]))
-					continue;
-			}
-			else
-				r = i ? t : a[0];
+			r = i ? t : a[0];
 			x.index = a + i + 1;
 			if(next(m,x)) return true;
 		}
 		x.index = a;
-		r = s;
 		return false;
 	}
 };
 
 class condition : public pat_t
 {
-	class test : public pat_t
-	{
-		var m_test;
-	public:
-		test(Var x) : m_test(x) {}
-		bool match(map_t &m, pos_t &x)
-		{
-			return Eval(Subs(m,m_test)) == True;
-		}
-	};
-	var m_pattern;
 	var m_test;
 public:
-	condition(Var x, Var y) : m_pattern(x),m_test(new test(y))
-	{
-		Next(m_pattern) = m_test;
-	}
+	condition(Var x) : m_test(x) {}
 	bool match(map_t &m, pos_t &x)
 	{
-		pos_t y(*x);
-		if(Match(m,m_pattern,y))
-		{
-			++x;
-			if(next(m,x)) return true;
-			--x;
-		}
+		if (Eval(Subs(m,m_test)) == True)
+			return next(m, x);
+		return false;
+	}
+};
+
+class patterntest : public pat_t
+{
+	var m_test;
+public:
+	patterntest(Var x) : m_test(x) {}
+	bool match(map_t &m, pos_t &x)
+	{
+		var& r = m[0];
+		//if (ExQ(r,TAG(Sequence))) {
+
+		//}
+		if (Eval(Ex(m_test,Vec(r))) == True)
+			return next(m, x);
 		return false;
 	}
 };
@@ -290,13 +255,28 @@ public:
 	}
 };
 
+class oneidentity : public pat_t
+{
+	var m_head;
+public:
+	oneidentity(Var x) : m_head(x) {}
+	bool match(map_t &m, pos_t &x)
+	{
+		if (!x) return false;
+		var t = Vec(*x);
+		pos_t y((Var)t, &x);
+		bool flag = next(m,y);
+		return flag;
+	}
+};
+
 class push : public pat_t
 {
 public:
 	push() {}
 	bool match(map_t &m, pos_t &x)
 	{
-		if(!x || !VecQ(*x))
+		if(!x || !VecQ(*x) || Size(*x) == 0)
 			return false;
 		pos_t y((Var)*x,&x);
 		return next(m,y);
@@ -411,6 +391,60 @@ public:
 		return fixs.size() == 0 && next(m,x);
 	}
 };
+
+class alternatives : public pat_t
+{
+	std::vector<var> m_patterns;
+public:
+	alternatives(const std::vector<var>& x)
+	{
+		m_patterns.resize(x.size());
+		for (size_t i = 0; i < x.size(); ++i)
+			m_patterns[i] = Pat(x[i]);
+	}
+	alternatives(Var x)
+	{
+		m_patterns.resize(Size(x));
+		for (size_t i = 0; i < Size(x); ++i)
+			m_patterns[i] = Pat(At(x,i));
+	}
+	alternatives(Var x, Var y)
+	{
+		m_patterns.resize(2);
+		m_patterns[0] = x;
+		m_patterns[1] = y;
+	}
+	alternatives(Var x, Var y, Var z)
+	{
+		m_patterns.resize(3);
+		m_patterns[0] = x;
+		m_patterns[1] = y;
+		m_patterns[2] = z;
+	}
+	bool match(map_t &m, pos_t &x)
+	{
+		for (size_t i = 0; i < m_patterns.size(); ++i) {
+			Next(m_patterns[i]) = m_next;
+			if (Match(m, m_patterns[i], x))
+				return true;
+		}
+		return false;
+	}
+};
+
+class empty : public pat_t
+{
+	var m_default;
+public:
+	empty(Var x) : m_default(x) {}
+	bool match(map_t &m, pos_t &x)
+	{
+		m[0] = m_default;
+		return next(m, x);
+	}
+};
 }
+
+API var catch_all_pattern;
 //////////////////////////////////////
 }

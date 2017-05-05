@@ -272,10 +272,6 @@
 				RelativePath="..\..\Package\Polynomial\unismallprime.cpp"
 				>
 			</File>
-			<File
-				RelativePath="..\..\Package\Polynomial\UniSolve.u"
-				>
-			</File>
 		</Filter>
 		<Filter
 			Name="Í·ÎÄ¼þ"

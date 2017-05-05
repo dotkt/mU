@@ -64,7 +64,7 @@ void root_of_unit(var & root, uint i, uint n, map_t & current)
 
 void UniSolveInitialize()
 {
-	var In=ParseFile(Path() + L"Package/Polynomial/UniSolve.u");
+	var In = Eval(Sym(_W("$SolutionFormula"),System));
 	ca=At(In,0);
 	cb=At(In,1);
 	cc=At(In,2);

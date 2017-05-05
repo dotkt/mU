@@ -3,10 +3,8 @@
 
 namespace mU {
 namespace Differential {
-namespace {
 
 var TAG($D), TAG($Derivative), TAG($MultiD);
-
 var D(Var x,Var y)
 {
 	map_t e;
@@ -27,8 +25,8 @@ Wrap(D)
 		{
 			if (Type(At(para,1))==TYPE(int))
 			{
-				size_t n=Z::SI(At(para,1));
-				for (int i=0;i<n;i++)
+				size_t n=Z::UI(At(para,1));
+				for (size_t i=0;i<n;i++)
 					r=D(r,At(para,0));
 			}
 			//处理符号阶的导数，无关则返回0
@@ -37,10 +35,10 @@ Wrap(D)
 			else return 0;
 		}
 		else
-			if (Type(para)==TYPE(sym) || Head(para)==TAG(Slot))
-		{
-			r=D(r,para);
-		}
+			if (Type(para)==TYPE(sym) || Tag(para)==TAG(Slot))
+			{
+				r=D(r,para);
+			}
 			else return 0;
 	}
 
@@ -54,8 +52,8 @@ Wrap(D)
 Wrap2($Derivative)
 {
 	if (Size(y)==1) {
-		var head=Head(At(y,0));
-		if (Head(head) == TAG($Derivative) && Size(x)==Size(Body(head)))
+		var head=Tag(At(y,0));
+		if (Tag(head) == TAG($Derivative) && Size(x)==Size(Body(head)))
 		{
 			var r = Vec();
 			for (size_t i=0;i<Size(x);i++)
@@ -74,17 +72,19 @@ Wrap2(Derivative)
 	var t=Vec();
 	for (size_t i=0;i<n;i++)
 	{
-		Push(t, Ex(TAG(Slot),Vec(Int((uint)i+1))));
+		Push(t, Ex(TAG(Slot),Vec(Int((mU::uint)i+1))));
 	}
 	var r=Vec(Ex(At(y,0),t));
 	for (size_t i=0;i<n;i++)
 	{
-		Push(r, Vec(Ex(TAG(Slot),Vec(Int((uint)i+1))), At(x,i)));
+		Push(r, Vec(Ex(TAG(Slot),Vec(Int((mU::uint)i+1))), At(x,i)));
 	}
-	r=WRAP(D)(r);
-	if ( Head(Head(Head(r)))==TAG(Derivative) && (Same(At(Body(Head(r)),0), At(y,0)) ||
-		((Head(Head(At(y,0)))==TAG(Derivative)  && Same(At(Body(Head(r)),0), At(Body(At(y,0)),0)))  )
-		 ))
+	t = WRAP(D)(r);
+	if (t)
+		r = t;
+	if ( Tag(Tag(Tag(r)))==TAG(Derivative) && (Same(At(Body(Head(r)),0), At(y,0)) ||
+		((Tag(Tag(At(y,0)))==TAG(Derivative)  && Same(At(Body(Head(r)),0), At(Body(At(y,0)),0)))  )
+		))
 		return Head(r);
 	else
 		return Ex(TAG(Function),Vec(r));
@@ -104,7 +104,7 @@ Wrap($MultiD)
 		for (size_t j=0;j<n;j++)
 		{
 			if (i==j) Push(t,Int(1L));
-				else Push(t,Int(0L));
+			else Push(t,Int(0L));
 		}
 		var op1=Eval(Ex(Ex(Ex(TAG($Derivative),t),Vec(f)),g));
 		var op2=D(At(g,i),v);
@@ -112,12 +112,11 @@ Wrap($MultiD)
 	}
 	return r;
 }
-}
+
 void Initialize()
 {
 	static bool Initialized = false;
 	if(Initialized) return;
-	ParseFile(Path() + L"Package/Differential/D.u");
 
 	DEF_SYSTEM_TAG_SYM($D)
 	DEF_SYSTEM_TAG_SYM($Derivative)
@@ -134,4 +133,5 @@ void Initialize()
 }
 }
 }
+
 DLLMAIN(mU::Differential::Initialize)

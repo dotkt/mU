@@ -3,6 +3,7 @@
 #include <mU/Pattern.h>
 #include <mU/Kernel.h>
 #include <mU/Interface.h>
+#include <limits>
 
 namespace mU {
 namespace {
@@ -481,6 +482,14 @@ Wrap(Evaluate)
 {
 	return Eval(At(x,0));
 }
+Wrap(DownValuesDefaultType)
+{
+	if (Size(x) == 0)
+		return Int(def_t::default_type);
+	if (IntQ(At(x,0)))
+		def_t::default_type = Z::SI(At(x,0));
+	return Null;
+}
 Wrap(Part)
 {
 	var c = At(x,0);
@@ -582,18 +591,19 @@ Wrap(Apply)
 		return Eval(Ex(At(x,0),At(x,1)));
 	return 0;
 }
+var Map(Var f, Var b) {
+	size_t n = Size(b);
+	var r = Vec(n);
+	for(size_t i = 0; i < n; ++i)
+		At(r,i) = Eval(Ex(f,Vec(At(b,i))));
+	return r;
+}
 Wrap(Map)
 {
 	if(VecQ(At(x,1)))
-	{
-		var a = At(x,0);
-		var b = At(x,1);
-		size_t n = Size(b);
-		var r = Vec(n);
-		for(size_t i = 0; i < n; ++i)
-			At(r,i) = Eval(Ex(a,Vec(At(b,i))));
-		return r;
-	}
+		return Map(At(x,0), At(x,1));
+	else if (ExQ(At(x,1)))
+		return Ex(Head(At(x,1)),Map(At(x,0),Body(At(x,1))));
 	return 0;
 }
 Wrap(Property)
@@ -623,12 +633,7 @@ Wrap(ToString)
 }
 Wrap(ToExpression)
 {
-	if(StrQ(At(x,0)))
-	{
-		var r = ParseString(CStr(At(x,0)));
-		return r ? r : Nil;
-	}
-	return 0;
+	return StrQ(At(x, 0)) ? ToExpression(CStr(At(x, 0))) : 0;
 }
 Wrap(Exit)
 {
@@ -838,6 +843,594 @@ Wrap(StringDrop)
 	}
 	return 0;
 }
+Wrap(DownValues)
+{
+	return GetDownValues(At(x, 0));
+}
+Wrap(UpValues)
+{
+	return GetUpValues(At(x, 0));
+}
+Wrap(Information)
+{
+	Var symbol = At(x, 0);
+
+	if (!SymQ(symbol))
+	{
+		throw LogicError(L"the only argument to Information should be a symbol");
+	}
+
+	if (Properties.count(symbol) && Properties[symbol].count(TAG(usage)))
+	{
+		Println(Properties[symbol][TAG(usage)], wcout);
+	}
+
+
+	if (Attributes.count(symbol))
+	{
+		const attr_t &attributes = Attributes[symbol];
+		const size_t n = attributes.size();
+		size_t i = 0;
+
+		if (n > 0)
+		{
+			Print(Str(L"Attributes["), wcout);
+			Print(symbol, wcout);
+			Print(Str(L"] = {"), wcout);
+
+			for (attr_t::const_iterator j = attributes.begin();
+					j != attributes.end(); ++j)
+			{
+				Print(*j, wcout);
+
+				if (i < n-1)
+				{
+					Print(Str(L", "), wcout);
+				}
+				++i;
+			}
+
+			Println(Str(L"}"), wcout);
+		}
+	}
+
+	if (OwnValues.count(symbol))
+	{
+		var ownValue = OwnValues[symbol];
+		Print(symbol, wcout);
+		Print(Str(L" := "), wcout);
+		Println(ownValue, wcout);
+	}
+
+	var downValues = GetDownValues(symbol);
+	//assert(VecQ(downValues));
+	for (size_t i = 0; i < Size(downValues); ++i)
+	{
+		Println(At(downValues, i), wcout);
+	}
+
+	var upValues = GetUpValues(symbol);
+	//assert(VecQ(upValues));
+	for (size_t i = 0; i < Size(upValues); ++i)
+	{
+		Println(At(upValues, i), wcout);
+	}
+
+	if (CProcs.count(symbol))
+	{
+		Print(symbol, wcout);
+		Println(Str(L" has CProc"), wcout);
+	}
+
+	return Null;
+}
+Wrap(Protect)
+{
+	var list = Vec();
+
+	try {
+		FlattenAll(list, x);
+		for (size_t i = 0; i < Size(list); ++i)
+		{
+			var elem = At(list, i);
+			if (Type(elem) != TYPE(str) && Type(elem) != TYPE(sym))
+			{
+				throw LogicError(L"Protect expects strings, "
+								L"symbols and lists of those.");
+			}
+		}
+		for (size_t i = 0; i < Size(list); ++i)
+		{
+			var elem = At(list, i);
+			switch (Type(elem))
+			{
+			case TYPE(str):
+			{
+				var symbol = Sym2(CStr(elem).c_str());
+				Attributes[symbol].insert(Protected);
+				break;
+			}
+			case TYPE(sym):
+				Attributes[elem].insert(Protected);
+				break;
+			default:
+				//assert(false);
+				break;
+			}
+		}
+
+	} catch (Exception &e) {
+		// TODO: log the problem
+		return Ex(TAG(Protect), x);
+	}
+
+	return list;
+}
+Wrap(Unprotect)
+{
+	var list = Vec();
+
+	try {
+		FlattenAll(list, x);
+		for (size_t i = 0; i < Size(list); ++i)
+		{
+			var elem = At(list, i);
+			if (Type(elem) != TYPE(str) && Type(elem) != TYPE(sym))
+			{
+				throw LogicError(L"Unprotect expects strings, "
+								L"symbols and lists of those.");
+			}
+		}
+		for (size_t i = 0; i < Size(list); ++i)
+		{
+			var elem = At(list, i);
+			switch (Type(elem))
+			{
+			case TYPE(str):
+			{
+				var symbol = Sym2(CStr(elem).c_str());
+				Attributes[symbol].erase(Protected);
+				break;
+			}
+			case TYPE(sym):
+				Attributes[elem].erase(Protected);
+				break;
+			default:
+				//assert(false);
+				break;
+			}
+		}
+
+	} catch (Exception &e) {
+		// TODO: log the problem
+		return Ex(TAG(Unprotect), x);
+	}
+
+	return list;
+}
+Wrap(Quiet)
+{
+	// TODO: fill this out once we've got error/warning message system
+	return At(x, 0);
+}
+Wrap(ListQ)
+{
+	return ListQ(At(x, 0)) ? True : False;
+}
+namespace
+{
+	bool HasAttribute(Var symbol, Var attribute)
+	{
+		std::map<Var,attr_t>::const_iterator iter = Attributes.find(symbol);
+		if(iter != Attributes.end())
+			return iter->second.count(attribute) > 0;
+		else
+			return false;
+	}
+}
+bool NumericQ(Var x)
+{
+	switch (Type(x))
+	{
+	case TYPE(int):
+	case TYPE(flt):
+	case TYPE(rat):
+		return true;
+	case TYPE(obj):
+	//	return dynamic_cast<obj_t*>(x)->tag() == SYSTEM_SYM(Complex);
+	case TYPE(vec):
+	case TYPE(str):
+		return false;
+	case TYPE(ex):
+		if (!HasAttribute(Head(x), NumericFunction))
+		{
+			return false;
+		}
+		else
+		{
+			Var body = Body(x);
+			const size_t length = Size(body);
+			for (size_t i = 0; i < length; ++i)
+			{
+				if (!NumericQ(At(body, i)))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+	case TYPE(sym):
+		return HasAttribute(x, Constant) || x == TAG(I);
+	default:
+		//assert(false);
+		return false;
+	}
+
+	return false;
+}
+bool NumericOrInfQ(Var x)
+{
+	return NumericQ(x) || x == TAG(Infinity) || Same(x, NInfinity);
+}
+Wrap(Min)
+{
+	var list = Vec();
+	FlattenAll(list, x);
+	const size_t length = Size(list);
+	if (length == 0)
+	{
+		return TAG(Infinity);
+	}
+	else if (length == 1)
+	{
+		return At(list, 0);
+	}
+	var numeric_min = TAG(Infinity);
+	bool has_numeric_elems = false;
+	std::set<Var, Less2> non_numeric_elems;
+
+	for (size_t i = 0; i < length; ++i)
+	{
+		Var elem = At(list, i);
+		if (NumericOrInfQ(elem))
+		{
+			if (Order(elem, numeric_min) < 0)
+			{
+				numeric_min = elem;
+				has_numeric_elems = true;
+			}
+		}
+		else
+		{
+			non_numeric_elems.insert(elem);
+		}
+	}
+
+	if (non_numeric_elems.empty())
+	{
+		return numeric_min;
+	}
+	else
+	{
+		var r = Vec();
+		if (has_numeric_elems)
+		{
+			Push(r, numeric_min);
+		}
+		for (std::set<Var, Less2>::const_iterator j = non_numeric_elems.begin();
+			j != non_numeric_elems.end(); ++j)
+		{
+			Push(r, *j);
+		}
+
+		return Ex(TAG(Min), r);
+	}
+}
+Wrap(Max)
+{
+	var list = Vec();
+	FlattenAll(list, x);
+	const size_t length = Size(list);
+	if (length == 0)
+	{
+		return NInfinity;
+	}
+	else if (length == 1)
+	{
+		return At(list, 0);
+	}
+	var numeric_max = NInfinity;
+	bool has_numeric_elems = false;
+	std::set<Var, Less2> non_numeric_elems;
+
+	for (size_t i = 0; i < length; ++i)
+	{
+		Var elem = At(list, i);
+		if (NumericOrInfQ(elem))
+		{
+			if (Order(numeric_max, elem) < 0)
+			{
+				numeric_max = elem;
+				has_numeric_elems = true;
+			}
+		}
+		else
+		{
+			non_numeric_elems.insert(elem);
+		}
+	}
+
+	if (non_numeric_elems.empty())
+	{
+		return numeric_max;
+	}
+	else
+	{
+		var r = Vec();
+		if (has_numeric_elems)
+		{
+			Push(r, numeric_max);
+		}
+		for (std::set<Var, Less2>::const_iterator j = non_numeric_elems.begin();
+			j != non_numeric_elems.end(); ++j)
+		{
+			Push(r, *j);
+		}
+
+		return Ex(TAG(Max), r);
+	}
+}
+Wrap(NumericQ)
+{
+	return NumericQ(At(x, 0)) ? True : False;
+}
+var Dimensions(Var expr, mU::uint depth, Var parent_head)
+{
+	//assert(depth >= 0);
+
+	if (AtomQ(expr))
+	{
+		return Vec();
+	}
+	else
+	{
+		Var head = Tag(expr);
+		if (parent_head && !Same(head, parent_head))
+		{
+			return Vec();
+		}
+		Var vec = Type(expr) == TYPE(ex) ?
+					Body(expr).get()
+					: (/*assert(Type(expr) == TYPE(vec)),*/ expr);
+		var result = Vec(Int(static_cast<mU::sint>(Size(vec))));
+		if (Size(vec) == 0 || depth == 1)
+		{
+			return result;
+		}
+		var first_result = Dimensions(At(vec, 0),
+									depth == 0 ? 0 : depth - 1, head);
+		int first_size = Size(first_result);
+		for (size_t i = 1; i < Size(vec); ++i)
+		{
+			var curr_result = Dimensions(At(vec, i),
+										depth == 0 ? 0 : depth - 1, head);
+			int curr_size = Size(curr_result);
+
+			for (int j = 0; j < first_size && j < curr_size; ++j)
+			{
+				if (Z::Cmp(At(first_result, j), At(curr_result, j)) != 0)
+				{
+					first_size = j;
+					break;
+				}
+
+			}
+		}
+
+		for (int j = 0; j < first_size; ++j)
+		{
+			Push(result, At(first_result, j));
+		}
+
+		return result;
+	}
+}
+Wrap(Dimensions)
+{
+	var expr = At(x, 0);
+	mU::uint depth = 0;
+
+	if (Size(x) >= 2)
+	{
+		var depthv = At(x, 1);
+		if (Type(depthv) != TYPE(int) || mpz_sgn(CInt(depthv)) < 0)
+		{
+			throw LogicError(L"Dimensions expects its 2nd argument "
+							L"to be non-negative integer");
+		}
+#undef max
+		if (mpz_cmp_ui(CInt(depthv), std::numeric_limits<mU::uint>::max()) > 0)
+		{
+			throw LogicError(L"2nd argument to Dimensions is too large");
+		}
+
+		depth = mpz_get_ui(CInt(depthv));
+		if (depth == 0)
+		{
+			return Vec();
+		}
+	}
+
+	return Dimensions(expr, depth, 0);
+}
+Wrap(Prepend)
+{
+	var expr = At(x, 0);
+	var elem = At(x, 1);
+	var rvec = Vec(elem);
+	var vec;
+
+	if (AtomQ(expr))
+	{
+		throw LogicError(L"Prepend expects its 1st argument to be non-atomic");
+	}
+
+	switch (Type(expr))
+	{
+	case TYPE(vec):
+		vec = expr;
+		break;
+	case TYPE(ex):
+		vec = Body(expr);
+		break;
+	default:
+		//assert(false);
+		break;
+	}
+	CVec(rvec).insert(CVec(rvec).end(), CVec(vec).begin(), CVec(vec).end());
+
+	switch (Type(expr))
+	{
+	case TYPE(vec):
+		return rvec;
+	case TYPE(ex):
+		return Eval(Ex(Head(expr), rvec));
+	default:
+		//assert(false);
+		return expr;
+	}
+}
+Wrap(Append)
+{
+	var expr = At(x, 0);
+	var elem = At(x, 1);
+	var vec;
+
+	if (AtomQ(expr))
+	{
+		throw LogicError(L"Append expects its 1st argument to be non-atomic");
+	}
+
+	switch (Type(expr))
+	{
+	case TYPE(vec):
+		vec = expr;
+		break;
+	case TYPE(ex):
+		vec = Body(expr);
+		break;
+	default:
+		//assert(false);
+		break;
+	}
+	Push(vec, elem);
+
+	switch (Type(expr))
+	{
+	case TYPE(vec):
+		return vec;
+	case TYPE(ex):
+		return Eval(Ex(Head(expr), vec));
+	default:
+		//assert(false);
+		return expr;
+	}
+}
+Wrap(First)
+{
+	var arg = At(x, 0);
+	if (AtomQ(arg))
+	{
+		throw LogicError(L"First expects its 1st argument to be non-atomic");
+	}
+	switch (Type(arg))
+	{
+	case TYPE(vec):
+		if (Size(arg) > 0)
+			return At(arg, 0);
+		break;
+	case TYPE(ex):
+		if (Size(Body(arg)) > 0)
+			return At(Body(arg), 0);
+		break;
+	default:
+		//assert(false);
+		return 0;
+	}
+	return 0;
+}
+Wrap(Last)
+{
+	var arg = At(x, 0);
+	if (AtomQ(arg))
+	{
+		throw LogicError(L"Last expects its 1st argument to be non-atomic");
+	}
+	switch (Type(arg))
+	{
+	case TYPE(vec):
+		return At(arg, Size(arg)-1);
+	case TYPE(ex):
+		return At(Body(arg), Size(Body(arg))-1);
+	default:
+		//assert(false);
+		return 0;
+	}
+}
+Wrap(Rest)
+{
+	var arg = At(x, 0);
+	if (AtomQ(arg))
+	{
+		throw LogicError(L"Rest expects its 1st argument to be non-atomic");
+	}
+	var vec;
+	switch (Type(arg))
+	{
+	case TYPE(vec):
+		vec = arg;
+		break;
+	case TYPE(ex):
+		vec = Body(arg);
+		break;
+	default:
+		//assert(false);
+		break;
+	}
+	var rest = Vec();
+	for (size_t i = 1; i < Size(vec); ++i)
+	{
+		Push(rest, At(vec, i));
+	}
+	switch (Type(arg))
+	{
+	case TYPE(vec):
+		return rest;
+	case TYPE(ex):
+		return Ex(Head(arg), rest);
+	}
+	//assert(false);
+}
+Wrap(Most)
+{
+	var arg = At(x, 0);
+	if (AtomQ(arg))
+	{
+		throw LogicError(L"Most expects its 1st argument to be non-atomic");
+	}
+	var vec;
+	switch (Type(arg))
+	{
+	case TYPE(vec):
+		vec = arg;
+		break;
+	case TYPE(ex):
+		vec = Body(arg);
+		break;
+	}
+	CVec(vec).pop_back();
+	return Eval(arg);
+}
 Wrap2(Function)
 {
 	var c = At(x,0);
@@ -868,8 +1461,9 @@ std::map<Var,map_t> Properties;
 std::map<Var,attr_t> Attributes;
 unordered_map<Var,CProc> CProcs;
 unordered_map<Var,COper> COpers;
+sint Verbose = 0;
 var
-Global, System, Null, True, False, Nil,
+Global, System, Null, True, False, Nil, Failed,
 Constant, Flat, HoldAll, HoldAllComplete, HoldFirst,
 HoldRest, Listable, Locked, NHoldAll, NHoldFirst,
 NHoldRest, NumericFunction, OneIdentity, Orderless, Protected,
@@ -906,7 +1500,12 @@ TAG(Expand), TAG(Variables), TAG(Coefficient),
 TAG(Exponent), TAG(Deg), TAG(CoefficientList), TAG(FromCoefficientList),
 TAG(Graphics2D), TAG(Graphics3D),
 TAG(Options), TAG(StringLength), TAG(StringInsert), TAG(StringTake),
-TAG(StringDrop);
+TAG(StringDrop), TAG(Alternatives), TAG(Empty), TAG(Default), TAG(DownValues),
+TAG(UpValues), TAG(Protect), TAG(Unprotect), TAG(Quiet), TAG(ListQ), TAG(NumericQ),
+TAG(First), TAG(Last), TAG(Rest), TAG(Most), TAG(Prepend), TAG(Append), TAG(Dimensions), TAG(Min), TAG(Max);
+
+var TAG(general), TAG(error), TAG(usage), TAG(argx), TAG(argt), TAG(argr), TAG(argrx), TAG(argb), TAG(argbu);
+var TAG(nonopt), TAG(opttf), TAG(level), TAG(optx), TAG(atomicx);
 
 void Initialize()
 {
@@ -921,6 +1520,7 @@ void Initialize()
 	DEF_SYSTEM_SYM(True)
 	DEF_SYSTEM_SYM(False)
 	DEF_SYSTEM_SYM(Nil)
+	DEF_SYSTEM_NAME_SYM(Failed, L"$Failed")
 	DEF_SYSTEM_SYM(Constant)
 	DEF_SYSTEM_SYM(Flat)
 	DEF_SYSTEM_SYM(HoldAll)
@@ -1083,6 +1683,40 @@ void Initialize()
     DEF_SYSTEM_TAG_SYM(StringInsert)
     DEF_SYSTEM_TAG_SYM(StringTake)
     DEF_SYSTEM_TAG_SYM(StringDrop)
+	DEF_SYSTEM_TAG_SYM(Alternatives)
+	DEF_SYSTEM_TAG_SYM(Empty)
+	DEF_SYSTEM_TAG_SYM(Default)
+	DEF_SYSTEM_TAG_SYM(DownValues)
+	DEF_SYSTEM_TAG_SYM(UpValues)
+	DEF_SYSTEM_TAG_SYM(Protect)
+	DEF_SYSTEM_TAG_SYM(Unprotect)
+	DEF_SYSTEM_TAG_SYM(Quiet)
+	DEF_SYSTEM_TAG_SYM(ListQ)
+	DEF_SYSTEM_TAG_SYM(NumericQ)
+	DEF_SYSTEM_TAG_SYM(First)
+	DEF_SYSTEM_TAG_SYM(Last)
+	DEF_SYSTEM_TAG_SYM(Rest)
+	DEF_SYSTEM_TAG_SYM(Most)
+	DEF_SYSTEM_TAG_SYM(Prepend)
+	DEF_SYSTEM_TAG_SYM(Append)
+	DEF_SYSTEM_TAG_SYM(Dimensions)
+	DEF_SYSTEM_TAG_SYM(Min)
+	DEF_SYSTEM_TAG_SYM(Max)
+
+	DEF_SYSTEM_TAG_SYM(general)
+	DEF_SYSTEM_TAG_SYM(usage)
+	DEF_SYSTEM_TAG_SYM(argx)
+	DEF_SYSTEM_TAG_SYM(argt)
+	DEF_SYSTEM_TAG_SYM(error)
+	DEF_SYSTEM_TAG_SYM(argr)
+	DEF_SYSTEM_TAG_SYM(argrx)
+	DEF_SYSTEM_TAG_SYM(argb)
+	DEF_SYSTEM_TAG_SYM(argbu)
+	DEF_SYSTEM_TAG_SYM(nonopt)
+	DEF_SYSTEM_TAG_SYM(opttf)
+	DEF_SYSTEM_TAG_SYM(level)
+	DEF_SYSTEM_TAG_SYM(optx)
+	DEF_SYSTEM_TAG_SYM(atomicx)
 
 	DEF_CPROC(Plus)
     DEF_CPROC(Times)
@@ -1188,6 +1822,22 @@ void Initialize()
     DEF_WRAPPED_CPROC(CompoundExpression)
     DEF_WRAPPED_CPROC(Power)
     DEF_WRAPPED_CPROC(Mod)
+	DEF_WRAPPED_CPROC(DownValues)
+	DEF_WRAPPED_CPROC(UpValues)
+	DEF_WRAPPED_CPROC(Protect)
+	DEF_WRAPPED_CPROC(Unprotect)
+	DEF_WRAPPED_CPROC(Quiet)
+	DEF_WRAPPED_CPROC(ListQ)
+	DEF_WRAPPED_CPROC(NumericQ)
+	DEF_WRAPPED_CPROC(First)
+	DEF_WRAPPED_CPROC(Last)
+	DEF_WRAPPED_CPROC(Rest)
+	DEF_WRAPPED_CPROC(Most)
+	DEF_WRAPPED_CPROC(Prepend)
+	DEF_WRAPPED_CPROC(Append)
+	DEF_WRAPPED_CPROC(Dimensions)
+	DEF_WRAPPED_CPROC(Min)
+	DEF_WRAPPED_CPROC(Max)
 
 	DEF_WRAPPED_COPER(Function)
 
@@ -1260,7 +1910,7 @@ CAPI void Install() {
 #endif
 	), SYS(CProc));
 	Begin(System);
-	ParseFile(Path() + _W("Kernel/Kernel.u"));
+	Get(Path() + _W("Kernel/Kernel.m"));
 	End();
 }
 CAPI void Uninstall() {
