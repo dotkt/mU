@@ -675,6 +675,11 @@ Wrap(Do)
 	Do(At(x,0),Size(x) - 1,&At(x,1));
 	return Null;
 }
+Wrap(Box) {
+	wostringstream t;
+	BoxPrint(Pretty(At(x,0)),t);
+	return Str(t.str());
+}
 Wrap(N)
 {
 	size_t n = Size(x);
@@ -852,7 +857,7 @@ Wrap2(Function)
 }
 //void(*Types[TYPE_SIZE])(Var);
 var Contexts;
-stdext::hash_map<Var,const wchar*> ContextName;
+unordered_map<Var,const wchar*> ContextName;
 std::stack<Var> ContextStack;
 std::stack<std::list<Var> > ContextPath;
 map_t OwnValues;
@@ -861,8 +866,8 @@ std::map<Var,def_t> DownValues;
 std::map<Var,def_t> SubValues;
 std::map<Var,map_t> Properties;
 std::map<Var,attr_t> Attributes;
-stdext::hash_map<Var,CProc> CProcs;
-stdext::hash_map<Var,COper> COpers;
+unordered_map<Var,CProc> CProcs;
+unordered_map<Var,COper> COpers;
 var
 Global, System, Null, True, False, Nil,
 Constant, Flat, HoldAll, HoldAllComplete, HoldFirst,
@@ -1159,6 +1164,7 @@ void Initialize()
     DEF_WRAPPED_CPROC(Array)
     DEF_WRAPPED_CPROC(Table)
     DEF_WRAPPED_CPROC(Do)
+	DEF_WRAPPED_CPROC(Box)
 	DEF_WRAPPED_CPROC(N)
     DEF_WRAPPED_CPROC(IntegerPart)
     DEF_WRAPPED_CPROC(Floor)
@@ -1172,6 +1178,9 @@ void Initialize()
     DEF_WRAPPED_CPROC(CoefficientList)
     DEF_WRAPPED_CPROC(FromCoefficientList)
     DEF_WRAPPED_CPROC(StringLength)
+	DEF_WRAPPED_CPROC(StringInsert)
+	DEF_WRAPPED_CPROC(StringTake)
+	DEF_WRAPPED_CPROC(StringDrop)
 	DEF_WRAPPED_CPROC(Set)
     DEF_WRAPPED_CPROC(Part)
     DEF_WRAPPED_CPROC(Property)
@@ -1243,7 +1252,13 @@ DLLMAIN(mU::Initialize)
 using namespace mU;
 #define SYS(x) Sym(_W(#x),System)
 CAPI void Install() {
-	CProcs[SYS(CProc)] = (CProc)cfunc(cnoload("kernel"), SYS(CProc));
+	CProcs[SYS(CProc)] = (CProc)cfunc(cnoload(
+#if MU_EXPORTS
+	NULL
+#else
+	"kernel"
+#endif
+	), SYS(CProc));
 	Begin(System);
 	ParseFile(Path() + _W("Kernel/Kernel.u"));
 	End();

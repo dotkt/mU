@@ -10,21 +10,23 @@
 
 #include <iosfwd>
 #include <locale>
-#include <boost/scoped_array.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/iostreams/categories.hpp>
+//#include <boost/scoped_array.hpp>
+//#include <boost/shared_ptr.hpp>
+//#include <boost/iostreams/categories.hpp>
 #ifdef _WIN32
 #include <windows.h>
 #endif
 #include "Exceptions.h"
-namespace io = boost::iostreams;
+//namespace io = boost::iostreams;
 
 namespace mU {
 
+#if 0
 template<typename IOS>
 class UnicodeDevice {
 private:
-	boost::shared_ptr<IOS> iostream;
+	//boost::shared_ptr<IOS> iostream;
+	IOS* iostream;
 	enum
 	{
 		LEN_1_MASK = 0x80,
@@ -38,13 +40,13 @@ private:
 	};
 public:
 	typedef wchar_t char_type;
-	typedef io::bidirectional_device_tag category;
+	//typedef io::bidirectional_device_tag category;
 
-	UnicodeDevice(const boost::shared_ptr<IOS> &ios) : iostream(ios)
-	{}
+	//UnicodeDevice(const boost::shared_ptr<IOS> &ios) : iostream(ios)
+	UnicodeDevice(IOS *ios) : iostream(ios) {}
 
 	std::streamsize read(wchar_t *s, std::streamsize n)
-	{
+
 		for (std::streamsize i = 0; i < n; ++i)
 		{
 			char c[4];
@@ -212,12 +214,14 @@ inline wstring to_wstring(const char *src, size_t len)
 
 	return wstring(src, src + len); // FIXME: placebo implementation
 
-	scoped_array<wchar_t> buffer(new wchar_t[len]);
+	//scoped_array<wchar_t> buffer(new wchar_t[len]);
+	wstring buffer;
+	buffer.resize(len);
 	int count;
 #ifdef _WIN32
 	count = MultiByteToWideChar(CP_ACP,
 			MB_PRECOMPOSED | MB_USEGLYPHCHARS | MB_ERR_INVALID_CHARS,
-			src, len, buffer.get(), len);
+			src, len, /*buffer.get()*/&buffer[0], len);
 
 	if (!count)
 	{
@@ -264,7 +268,9 @@ inline string to_string(const mU::wchar *src, size_t len)
 
 	return string(src, src + len); // FIXME: placebo implementation
 
-	scoped_array<char> buffer(new char[len*8]);
+	//scoped_array<char> buffer(new char[len*8]);
+	string buffer;
+	buffer.resize(len*8);
 	int count;
 #ifdef _WIN32
 	const char def_char = '?';
@@ -275,9 +281,9 @@ inline string to_string(const mU::wchar *src, size_t len)
 			//        但mingw不支持
 			0,
 #else
-			WC_ERR_INVALID_CHARS | WC_NO_BEST_FIT_CHARS
+			WC_ERR_INVALID_CHARS | WC_NO_BEST_FIT_CHARS,
 #endif
-			src, len, buffer.get(), len*8,
+			src, len, /*buffer.get()*/&buffer[0], len*8,
 			&def_char, &used_def_char);
 
 	if (used_def_char)
@@ -318,10 +324,18 @@ inline string to_string(const mU::wchar *src, size_t len)
 	default:
 		throw RuntimeException();	// FIXME: ??е????????
 	}
-	count = out_next - buffer.get();
+	count = out_next - /*buffer.get()*/&buffer[0];
 #endif
-	return string(buffer.get(), count);
+	return string(/*buffer.get()*/&buffer[0], count);
 }
+#else
+inline wstring to_wstring(const char *src, size_t len) {
+	return wstring(src, src + len);
+}
+inline string to_string(const mU::wchar *src, size_t len) {
+	return string(src, src + len);
+}
+#endif
 }
 
 #endif /* UNICODEDEVICE_H_ */

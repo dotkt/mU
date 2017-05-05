@@ -59,7 +59,7 @@ void BoxPrint(Var x, wostream &f, size_t y) {
                 return;
             }
             const wchar *s = Name(h);
-            stdext::hash_map<wstring, size_t>::const_iterator iter;
+            unordered_map<wstring, size_t>::const_iterator iter;
             if (n == 0) {
                 if (h == TAG(Blank)) {
                     f << L'\"';
@@ -444,12 +444,4 @@ else if(h == tag_##x)\
     }
 }
 //////////////////////////////////////
-}
-
-using namespace mU;
-
-CAPI var System_Box(Var x) {
-	wostringstream t;
-	BoxPrint(Pretty(At(x,0)),t);
-	return Str(t.str());
 }

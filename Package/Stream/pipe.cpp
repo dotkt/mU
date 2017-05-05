@@ -1,6 +1,6 @@
 #include <mU/Stream.h>
-#define BOOST_ALL_DYN_LINK
-#include <boost/array.hpp>
+//#define BOOST_ALL_DYN_LINK
+//#include <boost/array.hpp>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -12,18 +12,18 @@ struct wpipebuf : std::wstreambuf
 {
 	wpipebuf()
 	{
-		setp(put_buf.data(), put_buf.data() + bufsize);
+		setp(put_buf/*.data()*/, put_buf/*.data()*/ + bufsize);
 	}
 	int_type underflow(void)
 	{
 		bool ok;
 		DWORD cnt;
-		BOOL res = ReadFile(in, get_bufa.data(), bufsize / sizeof(char_type), &cnt, NULL);
+		BOOL res = ReadFile(in, get_bufa/*.data()*/, bufsize / sizeof(char_type), &cnt, NULL);
 		ok = (res && cnt > 0);
 		if(ok)
 		{
-			wchar_t *dst = get_buf.data();
-			const char *src = get_bufa.data();
+			wchar_t *dst = get_buf/*.data()*/;
+			const char *src = get_bufa/*.data()*/;
 			size_t rcnt, wcnt = 0;
 			while(cnt)
 			{
@@ -33,7 +33,7 @@ struct wpipebuf : std::wstreambuf
 				++dst;
 				++wcnt;
 			}
-			setg(get_buf.data(), get_buf.data(), get_buf.data() + wcnt);
+			setg(get_buf/*.data()*/, get_buf/*.data()*/, get_buf/*.data()*/ + wcnt);
 			return traits_type::to_int_type(*gptr());
 		}
 		else
@@ -52,7 +52,7 @@ struct wpipebuf : std::wstreambuf
 	}
 	int sync()
 	{
-		char *dst = put_bufa.data();
+		char *dst = put_bufa/*.data()*/;
 		const wchar_t *src = pbase();
 		size_t mcnt, cnt = 0;
 		while(src != pptr())
@@ -64,17 +64,21 @@ struct wpipebuf : std::wstreambuf
 		}
 		bool ok;
 		DWORD rcnt;
-		BOOL res = WriteFile(out, put_bufa.data(), cnt, &rcnt, NULL);
+		BOOL res = WriteFile(out, put_bufa/*.data()*/, cnt, &rcnt, NULL);
 		ok = (res && rcnt == cnt);
 		if(ok) pbump(pbase() - pptr());
 		return ok ? 0 : -1;
 	}
 	HANDLE in,out;
 	enum { bufsize = 512 };
-	boost::array<wchar_t, bufsize> get_buf;
-	boost::array<wchar_t, bufsize> put_buf;
-	boost::array<char, bufsize / sizeof(wchar_t)> get_bufa;
-	boost::array<char, bufsize * sizeof(wchar_t)> put_bufa;
+	//boost::array<wchar_t, bufsize> get_buf;
+	//boost::array<wchar_t, bufsize> put_buf;
+	//boost::array<char, bufsize / sizeof(wchar_t)> get_bufa;
+	//boost::array<char, bufsize * sizeof(wchar_t)> put_bufa;
+	wchar_t get_buf[bufsize];
+	wchar_t put_buf[bufsize];
+	char get_bufa[bufsize / sizeof(wchar_t)];
+	char put_bufa[bufsize / sizeof(wchar_t)];
 };
 struct wpipestream : wiostream
 {

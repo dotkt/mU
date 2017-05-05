@@ -13,7 +13,13 @@ int main(int argc,char *argv[]) {
 	std::locale::global(std::locale(""));
 	//wcerr.rdbuf(0);
 	Initialize();
-	if (!cinstall("kernel")) {
+	if (!cinstall(
+#if MU_EXPORTS
+		NULL
+#else
+		"kernel"
+#endif
+		)) {
 		wcerr << _W("Kernel library not found, quit...") << std::endl;
 		return -1;
 	}

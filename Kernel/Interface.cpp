@@ -27,18 +27,16 @@ string cpath(const char* x) {
 }
 void* cload(const char* x) {
 #ifdef _WIN32
-	return LoadLibraryA(cpath(x).c_str());
+	return x ? LoadLibraryA(cpath(x).c_str()) : cnoload(NULL);
 #else
-	string s = cpath(x);
-	return dlopen(s.c_str(), RTLD_LAZY);
+	return dlopen(x ? cpath(x).c_str() : NULL, RTLD_LAZY);
 #endif
 }
 void* cnoload(const char* x) {
 #ifdef _WIN32
-	return GetModuleHandleA(cpath(x).c_str());
+	return GetModuleHandleA(x ? cpath(x).c_str() : NULL);
 #else
-	string s = cpath(x);
-	return dlopen(s.c_str(), RTLD_LAZY | RTLD_NOLOAD);
+	return dlopen(x ? cpath(x).c_str() : NULL, RTLD_LAZY | RTLD_NOLOAD);
 #endif
 }
 void cunload(void* x) {

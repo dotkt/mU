@@ -9,8 +9,8 @@
 #define EXCEPTIONS_H_
 
 #include <string>
-#include <boost/system/error_code.hpp>
-#include <boost/version.hpp>
+//#include <boost/system/error_code.hpp>
+//#include <boost/version.hpp>
 #ifdef _WIN32
 #include <Windows.h>
 #else
@@ -68,6 +68,7 @@ namespace mU
 
 	};
 
+#if 0
 	class SystemError : public RuntimeException
 	{
 	public:
@@ -104,6 +105,10 @@ namespace mU
 #define OS_API_CALL_R(r, api_func, ...)		\
 	if ((r = api_func(__VA_ARGS__)) == -1)	\
 		throw SystemError();
+#endif
+#else
+#define OS_API_CALL(api_func, ...) api_func(__VA_ARGS__)
+#define OS_API_CALL_R(r, api_func, ...) r = api_func(__VA_ARGS__)
 #endif
 }
 

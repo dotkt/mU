@@ -60,7 +60,7 @@ wchar parser::read()
 					m_in->get();
 					wstring t;
 					std::getline(*m_in,t,L']');
-					stdext::hash_map<wstring,size_t>::const_iterator
+					unordered_map<wstring,size_t>::const_iterator
 						iter = s_named.find(t);
 					if(iter != s_named.end())
 					{

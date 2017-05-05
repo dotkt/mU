@@ -4,12 +4,12 @@
 namespace mU {
 //////////////////////////////////////
 DLL std::vector<parser::char_t> parser::s_char;
-DLL stdext::hash_map<wint_t,size_t> parser::s_unicode;
-DLL stdext::hash_map<wstring,size_t> parser::s_named;
+DLL unordered_map<wint_t,size_t> parser::s_unicode;
+DLL unordered_map<wstring,size_t> parser::s_named;
 DLL size_t parser::s_prec = 1;
 DLL std::vector<parser::oper_t> parser::s_oper;
 DLL std::map<parser::token_t,size_t> parser::s_postfix_token, parser::s_prefix_token, parser::s_infix_token;
-DLL stdext::hash_map<wstring,size_t> parser::s_postfix_symbol, parser::s_prefix_symbol, parser::s_infix_symbol;
+DLL unordered_map<wstring,size_t> parser::s_postfix_symbol, parser::s_prefix_symbol, parser::s_infix_symbol;
 DLL std::set<parser::token_t> parser::s_end;
 void parser::init()
 {

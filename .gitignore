@@ -1,0 +1,11 @@
+*.suo
+*.ncb
+*.db
+*.user
+*Debug
+*Release
+*/.vs
+*.def
+*.lib
+*.dll
+*.exe

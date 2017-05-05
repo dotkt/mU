@@ -28,7 +28,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <gmp.h>
-#include <boost/intrusive_ptr.hpp>
+//#include <boost/intrusive_ptr.hpp>
 
 namespace mU {
 struct var_t;
@@ -69,8 +69,10 @@ using std::wios;
 }
 
 #ifdef _MSC_VER
-#include <hash_set>
-#include <hash_map>
+#include <unordered_set>
+#include <unordered_map>
+using std::tr1::unordered_set;
+using std::tr1::unordered_map;
 #pragma comment(lib,"../../Lib/gmp.lib")
 #else
 #include <ext/hash_set>
@@ -141,28 +143,28 @@ const size_t TYPE_MASK = TYPE_SIZE - 1;
 struct var_t
 {
 private:
-	type_t type : TYPE_BITS;
+	size_t type : TYPE_BITS;
 	size_t refcount : sizeof(size_t) * CHAR_BIT - TYPE_BITS;
 
 public:
 	var_t(type_t t) : type(t), refcount(0) {}
 	virtual ~var_t() {}
 
-	friend size_t mU::Type(Var x);
-	friend void mU::intrusive_ptr_add_ref(var_t *);
-	friend void mU::intrusive_ptr_release(var_t *);
+	friend size_t Type(Var x);
+	friend void intrusive_ptr_add_ref(Var);
+	friend void intrusive_ptr_release(Var);
 };
 inline size_t Type(Var x)
 {
 	return x->type;
 }
 
-inline void intrusive_ptr_add_ref(var_t *pv)
+inline void intrusive_ptr_add_ref(Var pv)
 {
 	++(pv->refcount);
 }
 
-inline void intrusive_ptr_release(var_t *pv)
+inline void intrusive_ptr_release(Var pv)
 {
 	--(pv->refcount);
 	if (pv->refcount == 0)
@@ -182,17 +184,18 @@ inline void intrusive_ptr_release(var_t *pv)
 class var
 {
 private:
-	boost::intrusive_ptr<var_t> ptr;
+	//boost::intrusive_ptr<var_t> ptr;
+	Var ptr;
 public:
 	var() : ptr(0) {}
-	var(var_t *x) : ptr(x) {}
+	var(Var x) : ptr(x) {}
 	var(const var &x) : ptr(x.ptr) {}
-	Var operator =(var_t *x) { ptr = x; return ptr.get(); }
-	Var operator =(const var &x) { ptr = x.ptr; return ptr.get(); }
+	Var operator =(Var x) { ptr = x; return ptr/*.get()*/; }
+	Var operator =(const var &x) { ptr = x.ptr; return ptr/*.get()*/; }
 	~var() {}
-	operator Var() const { return ptr.get(); }
-	Var get() const { return ptr.get(); }
-	Var operator ->() const { return ptr.operator->(); }
+	operator Var() const { return ptr/*.get()*/; }
+	Var get() const { return ptr/*.get()*/; }
+	Var operator ->() const { return ptr/*.operator->()*/; }
 };
 
 //////////////////////////////////////
@@ -382,7 +385,7 @@ inline str_t::rep_t& CStr(Var x) { return STR_REP(x); }
 */
 struct tab_t : obj_t
 {
-	typedef stdext::hash_map<wstring,var> rep_t;
+	typedef unordered_map<wstring,var> rep_t;
 	rep_t rep;
 };
 inline tab_t::rep_t &TAB_REP(Var x)

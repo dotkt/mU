@@ -1,4 +1,5 @@
-#include <boost/scoped_array.hpp>
+//#include <boost/scoped_array.hpp>
+#include <string>
 #include <mU/Number.h>
 #include <mU/Kernel.h>
 #include <mU/Parser.h>
@@ -20,7 +21,9 @@ inline void Print(wchar x, wostream &f)
 void Print(Var x, wostream &f, size_t y)
 {
 	static size_t bufsize = 1024;
-	static boost::scoped_array<char> buffer(new char[bufsize]);
+	//static boost::scoped_array<char> buffer(new char[bufsize]);
+	static std::string buffer;
+	buffer.resize(bufsize);
 
 	switch(Type(x))
 	{
@@ -34,9 +37,11 @@ void Print(Var x, wostream &f, size_t y)
 			if (bufsize < req_size)
 			{
 				bufsize = req_size;
-				buffer.reset(new char[bufsize]);
+				//buffer.reset(new char[bufsize]);
+				buffer.resize(bufsize);
 			}
-			f << mpz_get_str(buffer.get(), 10, rep);
+			//f << mpz_get_str(buffer.get(), 10, rep);
+			f << mpz_get_str(&buffer[0], 10, rep);
 		}
 		break;
 	case TYPE(rat):
@@ -48,9 +53,11 @@ void Print(Var x, wostream &f, size_t y)
 			if (bufsize < req_size)
 			{
 				bufsize = req_size;
-				buffer.reset(new char[bufsize]);
+				//buffer.reset(new char[bufsize]);
+				buffer.resize(bufsize);
 			}
-			f << mpq_get_str(buffer.get(),10,rep);
+			//f << mpq_get_str(buffer.get(),10,rep);
+			f << mpq_get_str(&buffer[0],10,rep);
 		}
 		break;
 	case TYPE(flt):
@@ -63,10 +70,11 @@ void Print(Var x, wostream &f, size_t y)
 			if (bufsize < req_size)
 			{
 				bufsize = req_size;
-				buffer.reset(new char[bufsize]);
+				//buffer.reset(new char[bufsize]);
+				buffer.resize(bufsize);
 			}
-			const char *const s = mpf_get_str(buffer.get(), &exp, 10,
-												n_digits, rep);
+			//const char *const s = mpf_get_str(buffer.get(), &exp, 10, n_digits, rep);
+			const char *const s = mpf_get_str(&buffer[0], &exp, 10, n_digits, rep);
 			// TODO: maybe we don't need character encoding conversion here.
 			wstring t(to_wstring(s, strlen(s)));
 			const wchar *buf = t.c_str();
@@ -158,7 +166,7 @@ void Print(Var x, wostream &f, size_t y)
 			if(SymQ(h))
 			{
 				const wchar *s = Name(h);
-				stdext::hash_map<wstring,size_t>::const_iterator iter;
+				unordered_map<wstring,size_t>::const_iterator iter;
 				if(n == 0)
 				{
 					if(h == TAG(Blank))
@@ -371,7 +379,7 @@ inline void FullPrint(wchar x, wostream &f)
 {
 	if(x >= 0x0080)
 	{
-		stdext::hash_map<wint_t,size_t>::const_iterator
+		unordered_map<wint_t,size_t>::const_iterator
 			iter = parser::s_unicode.find((wint_t)x);
 		if(iter != parser::s_unicode.end())
 			f << L"\\[" << parser::s_char[iter->second].named << L']';

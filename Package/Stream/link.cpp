@@ -1,13 +1,14 @@
 #include <mU/Stream.h>
 #define BOOST_ALL_DYN_LINK
-#include <boost/asio.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/iostreams/stream.hpp>
+//#include <boost/asio.hpp>
+//#include <boost/shared_ptr.hpp>
+//#include <boost/iostreams/stream.hpp>
 #include "mU/UnicodeDevice.h"
-namespace io = boost::iostreams;
+//namespace io = boost::iostreams;
 
 namespace mU {
 namespace Stream {
+#if 0
 struct link_t : stream_t
 {
 	link_t(std::wiostream *x) { rep = x; }
@@ -47,5 +48,10 @@ var Request(Var x)
 	return new link_t(p);
 }
 #undef T
+#else
+var Link(const wstring &x, size_t y) { return Null; }
+var Server(const wstring &x, size_t y) { return Null; }
+var Request(Var x) { return Null; }
+#endif
 }
 }

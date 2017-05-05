@@ -98,8 +98,8 @@ API std::map<Var,def_t> DownValues;
 API std::map<Var,def_t> SubValues;
 API std::map<Var,map_t> Properties;
 API std::map<Var,attr_t> Attributes;
-API stdext::hash_map<Var,CProc> CProcs;
-API stdext::hash_map<Var,COper> COpers;
+API unordered_map<Var,CProc> CProcs;
+API unordered_map<Var,COper> COpers;
 
 API var Eval(Var);
 API void Set(Var,Var);
@@ -139,7 +139,7 @@ var Subs(const T& m, Var x)
 
 // ·ûºÅ±íÏà¹Ø
 API var Contexts;
-API stdext::hash_map<Var,const wchar*> ContextName;
+API unordered_map<Var,const wchar*> ContextName;
 API std::stack<Var> ContextStack;
 API std::stack<std::list<Var> > ContextPath;
 inline var Context() { return ContextStack.top(); }

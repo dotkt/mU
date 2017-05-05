@@ -84,7 +84,7 @@ bool SearchDownValues(var &result, var head, var body)
 
 bool SearchCProcs(var &result, var head, var body)
 {
-	stdext::hash_map<Var,CProc>::const_iterator
+	unordered_map<Var,CProc>::const_iterator
 		iter = CProcs.find(head);
 	if(iter != CProcs.end())
 	{
@@ -122,7 +122,7 @@ bool SearchSubValues(var &result, var head, var body)
 
 bool SearchCOpers(var &result, var head, var body)
 {
-	stdext::hash_map<Var,COper>::const_iterator
+	unordered_map<Var,COper>::const_iterator
 		iter = COpers.find(Head(head));
 	if(iter != COpers.end())
 	{

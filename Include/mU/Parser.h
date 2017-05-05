@@ -36,8 +36,8 @@ public:
 		unicode(_unicode),named(_named) {}
 	};
 	DLL static std::vector<char_t> s_char;
-	DLL static stdext::hash_map<wint_t,size_t> s_unicode;
-	DLL static stdext::hash_map<wstring,size_t> s_named;
+	DLL static unordered_map<wint_t,size_t> s_unicode;
+	DLL static unordered_map<wstring,size_t> s_named;
 	DLL static size_t s_prec;
 	struct oper_t
 	{
@@ -58,7 +58,7 @@ public:
 	};
 	DLL static std::vector<oper_t> s_oper;
 	DLL static std::map<token_t,size_t> s_postfix_token, s_prefix_token, s_infix_token;
-	DLL static stdext::hash_map<wstring,size_t> s_postfix_symbol, s_prefix_symbol, s_infix_symbol;
+	DLL static unordered_map<wstring,size_t> s_postfix_symbol, s_prefix_symbol, s_infix_symbol;
 	DLL static std::set<token_t> s_end;
 	DLL static void init();
 	DLL parser();
@@ -91,7 +91,7 @@ private:
 	};
 	std::vector<node_t> m_node;
 	std::multimap<size_t,size_t> m_child;
-	stdext::hash_set<wstring> m_entry;
+	unordered_set<wstring> m_entry;
 	std::map<size_t,const wchar*> m_note;
 	std::stack<size_t> oper_stack;
 	std::stack<size_t> oprn_stack;
